@@ -1,0 +1,352 @@
+{
+    "name": "YouTube Downloader - yt-dlp",
+    "nodes": [
+        {
+            "parameters": {
+                "updates": [
+                    "message"
+                ]
+            },
+            "id": "telegram-trigger",
+            "name": "Telegram Trigger",
+            "type": "n8n-nodes-base.telegramTrigger",
+            "typeVersion": 1.1,
+            "position": [
+                240,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "mode": "runOnceForAllItems",
+                "jsCode": "const message = $input.item.json.message.text || '';\nconst chatId = $input.item.json.message.chat.id;\nconst messageId = $input.item.json.message.message_id;\n\n// Regex para URLs de YouTube\nconst youtubeRegex = /(?:youtube\\.com\\/watch\\?v=|youtu\\.be\\/|youtube\\.com\\/shorts\\/)([a-zA-Z0-9_-]{11})/;\nconst match = message.match(youtubeRegex);\n\nif (!match) {\n  return {\n    json: {\n      isValid: false,\n      error: '❌ No se encontró una URL válida de YouTube.\\n\\nEnvía una URL como:\\n• https://youtube.com/watch?v=abc123\\n• https://youtu.be/xyz789',\n      chatId: chatId,\n      shouldStop: true\n    }\n  };\n}\n\nconst videoId = match[1];\nconst youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;\n\n// Detectar formato (MP3 o MP4)\nlet formato = 'mp4';\nif (message.toLowerCase().includes('mp3') || \n    message.toLowerCase().includes('audio') || \n    message.toLowerCase().includes('música')) {\n  formato = 'mp3';\n}\n\nreturn {\n  json: {\n    isValid: true,\n    videoId: videoId,\n    youtubeUrl: youtubeUrl,\n    formato: formato,\n    chatId: chatId,\n    messageId: messageId,\n    shouldStop: false\n  }\n};"
+            },
+            "id": "code-validate",
+            "name": "Validate URL",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                460,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [
+                        {
+                            "value1": "={{$json.shouldStop}}",
+                            "value2": true
+                        }
+                    ]
+                }
+            },
+            "id": "if-should-stop",
+            "name": "Should Stop?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                680,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "chatId": "={{$json.chatId}}",
+                "text": "={{$json.error}}",
+                "additionalFields": {}
+            },
+            "id": "send-error",
+            "name": "Send Error",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.1,
+            "position": [
+                900,
+                180
+            ]
+        },
+        {
+            "parameters": {
+                "chatId": "={{$json.chatId}}",
+                "text": "⏳ Descargando tu video de YouTube...\\n\\nEsto puede tardar 30-60 segundos. ⏱️",
+                "additionalFields": {
+                    "reply_to_message_id": "={{$json.messageId}}"
+                }
+            },
+            "id": "send-processing",
+            "name": "Send Processing",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.1,
+            "position": [
+                900,
+                420
+            ]
+        },
+        {
+            "parameters": {
+                "rules": {
+                    "values": [
+                        {
+                            "conditions": {
+                                "string": [
+                                    {
+                                        "value1": "={{$json.formato}}",
+                                        "value2": "mp3"
+                                    }
+                                ]
+                            },
+                            "renameOutput": true,
+                            "outputKey": "MP3"
+                        },
+                        {
+                            "conditions": {
+                                "string": [
+                                    {
+                                        "value1": "={{$json.formato}}",
+                                        "value2": "mp4"
+                                    }
+                                ]
+                            },
+                            "renameOutput": true,
+                            "outputKey": "MP4"
+                        }
+                    ]
+                }
+            },
+            "id": "switch-format",
+            "name": "Switch Format",
+            "type": "n8n-nodes-base.switch",
+            "typeVersion": 3,
+            "position": [
+                1120,
+                420
+            ]
+        },
+        {
+            "parameters": {
+                "command": "=yt-dlp -f 'bestaudio' -x --audio-format mp3 -o '/tmp/%(title)s.%(ext)s' '{{$json.youtubeUrl}}' && ls -t /tmp/*.mp3 | head -1",
+                "options": {}
+            },
+            "id": "execute-ytdlp-mp3",
+            "name": "Download MP3",
+            "type": "n8n-nodes-base.executeCommand",
+            "typeVersion": 1,
+            "position": [
+                1340,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "command": "=yt-dlp -f 'best[height<=720]' -o '/tmp/%(title)s.%(ext)s' '{{$json.youtubeUrl}}' && ls -t /tmp/*.mp4 | head -1",
+                "options": {}
+            },
+            "id": "execute-ytdlp-mp4",
+            "name": "Download MP4",
+            "type": "n8n-nodes-base.executeCommand",
+            "typeVersion": 1,
+            "position": [
+                1340,
+                540
+            ]
+        },
+        {
+            "parameters": {
+                "mode": "runOnceForAllItems",
+                "jsCode": "// Obtener la ruta del archivo descargado\nconst filePath = $input.item.json.stdout.trim();\n\n// Extraer el nombre del archivo\nconst fileName = filePath.split('/').pop();\n\nreturn {\n  json: {\n    ...$input.item.json,\n    filePath: filePath,\n    fileName: fileName\n  }\n};"
+            },
+            "id": "code-parse-path",
+            "name": "Parse File Path",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1560,
+                420
+            ]
+        },
+        {
+            "parameters": {
+                "filePath": "={{$json.filePath}}",
+                "options": {}
+            },
+            "id": "read-file",
+            "name": "Read File",
+            "type": "n8n-nodes-base.readBinaryFile",
+            "typeVersion": 1,
+            "position": [
+                1780,
+                420
+            ]
+        },
+        {
+            "parameters": {
+                "resource": "message",
+                "operation": "sendDocument",
+                "chatId": "={{$json.chatId}}",
+                "binaryData": true,
+                "binaryPropertyName": "data",
+                "additionalFields": {
+                    "caption": "=✅ Descarga completada\\n\\n📁 {{$json.fileName}}\\n🎬 Powered by yt-dlp",
+                    "reply_to_message_id": "={{$json.messageId}}"
+                }
+            },
+            "id": "send-document",
+            "name": "Send Document",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.1,
+            "position": [
+                2000,
+                420
+            ]
+        },
+        {
+            "parameters": {
+                "command": "=rm -f '{{$json.filePath}}'",
+                "options": {}
+            },
+            "id": "cleanup",
+            "name": "Cleanup File",
+            "type": "n8n-nodes-base.executeCommand",
+            "typeVersion": 1,
+            "position": [
+                2220,
+                420
+            ]
+        }
+    ],
+    "connections": {
+        "Telegram Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Validate URL",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Validate URL": {
+            "main": [
+                [
+                    {
+                        "node": "Should Stop?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Should Stop?": {
+            "main": [
+                [
+                    {
+                        "node": "Send Error",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Send Processing",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Send Processing": {
+            "main": [
+                [
+                    {
+                        "node": "Switch Format",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Switch Format": {
+            "main": [
+                [
+                    {
+                        "node": "Download MP3",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Download MP4",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Download MP3": {
+            "main": [
+                [
+                    {
+                        "node": "Parse File Path",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Download MP4": {
+            "main": [
+                [
+                    {
+                        "node": "Parse File Path",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Parse File Path": {
+            "main": [
+                [
+                    {
+                        "node": "Read File",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Read File": {
+            "main": [
+                [
+                    {
+                        "node": "Send Document",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Send Document": {
+            "main": [
+                [
+                    {
+                        "node": "Cleanup File",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "pinData": {},
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [],
+    "triggerCount": 1,
+    "updatedAt": "2025-12-09T06:26:00.000Z",
+    "versionId": "youtube-downloader-ytdlp-v1"
+}
