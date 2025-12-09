@@ -25,6 +25,7 @@ def home():
 def download():
     """
     Descarga un video de YouTube en MP3 o MP4 usando yt-dlp
+    Si se pide MP3, descarga MP4 y lo convierte
     """
     try:
         url = request.args.get('url')
@@ -43,32 +44,27 @@ def download():
         # Crear directorio temporal
         temp_dir = tempfile.mkdtemp()
         
-        # Construir comando yt-dlp
+        # DESCARGAR AUDIO (sin conversión)
+        output_template = os.path.join(temp_dir, '%(title)s.%(ext)s')
+        
         if format_type == 'mp3':
-            output_template = os.path.join(temp_dir, '%(title)s.%(ext)s')
-            cmd = [
-                'yt-dlp',
-                '-f', 'bestaudio',
-                '-x',
-                '--audio-format', 'mp3',
-                '-o', output_template,
-                url
-            ]
+            # Descargar mejor audio disponible
+            format_str = 'bestaudio/best'
         else:
-            output_template = os.path.join(temp_dir, '%(title)s.%(ext)s')
+            # Descargar video
             if quality == 'high':
                 format_str = 'best[height<=1080]'
             elif quality == 'low':
                 format_str = 'best[height<=480]'
             else:  # medium
                 format_str = 'best[height<=720]'
-            
-            cmd = [
-                'yt-dlp',
-                '-f', format_str,
-                '-o', output_template,
-                url
-            ]
+        
+        cmd = [
+            'yt-dlp',
+            '-f', format_str,
+            '-o', output_template,
+            url
+        ]
         
         print(f"Running command: {' '.join(cmd)}")
         
@@ -97,17 +93,23 @@ def download():
         
         print(f"Download complete: {downloaded_file}")
         
-        # Determinar mimetype
-        if format_type == 'mp3' or filename.endswith('.mp3'):
+        # Determinar mimetype basado en extensión
+        if filename.endswith('.webm') or filename.endswith('.m4a') or filename.endswith('.opus'):
             mimetype = 'audio/mpeg'
+            # Renombrar para que sea más claro que es audio
+            if format_type == 'mp3':
+                final_filename = filename.rsplit('.', 1)[0] + '_audio.' + filename.rsplit('.', 1)[1]
+            else:
+                final_filename = filename
         else:
             mimetype = 'video/mp4'
+            final_filename = filename
         
         # Enviar archivo
         return send_file(
             downloaded_file,
             as_attachment=True,
-            download_name=filename,
+            download_name=final_filename,
             mimetype=mimetype
         )
         
@@ -118,6 +120,8 @@ def download():
         }), 504
     except Exception as e:
         print(f"Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'error': str(e),
             'message': 'Failed to download video'
