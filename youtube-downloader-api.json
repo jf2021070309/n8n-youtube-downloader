@@ -1,0 +1,219 @@
+{
+    "name": "YouTube Downloader - API",
+    "nodes": [
+        {
+            "parameters": {
+                "updates": [
+                    "message"
+                ]
+            },
+            "id": "telegram-trigger",
+            "name": "Telegram Trigger",
+            "type": "n8n-nodes-base.telegramTrigger",
+            "typeVersion": 1.1,
+            "position": [
+                240,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "mode": "runOnceForAllItems",
+                "jsCode": "const message = $input.item.json.message.text || '';\nconst chatId = $input.item.json.message.chat.id;\nconst messageId = $input.item.json.message.message_id;\n\nconst youtubeRegex = /(?:youtube\\.com\\/watch\\?v=|youtu\\.be\\/|youtube\\.com\\/shorts\\/)([a-zA-Z0-9_-]{11})/;\nconst match = message.match(youtubeRegex);\n\nif (!match) {\n  return {\n    json: {\n      isValid: false,\n      error: '❌ No se encontró una URL válida de YouTube.\\n\\nEnvía una URL como:\\n• https://youtube.com/watch?v=abc123 mp3\\n• https://youtu.be/xyz789',\n      chatId: chatId,\n      shouldStop: true\n    }\n  };\n}\n\nconst videoId = match[1];\nconst youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;\n\nlet formato = 'mp4';\nif (message.toLowerCase().includes('mp3') || message.toLowerCase().includes('audio')) {\n  formato = 'mp3';\n}\n\nreturn {\n  json: {\n    isValid: true,\n    videoId: videoId,\n    youtubeUrl: youtubeUrl,\n    formato: formato,\n    chatId: chatId,\n    messageId: messageId,\n    shouldStop: false\n  }\n};"
+            },
+            "id": "code-validate",
+            "name": "Validate URL",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                460,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [
+                        {
+                            "value1": "={{$json.shouldStop}}",
+                            "value2": true
+                        }
+                    ]
+                }
+            },
+            "id": "if-should-stop",
+            "name": "Should Stop?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                680,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "chatId": "={{$json.chatId}}",
+                "text": "={{$json.error}}",
+                "additionalFields": {}
+            },
+            "id": "send-error",
+            "name": "Send Error",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.1,
+            "position": [
+                900,
+                180
+            ]
+        },
+        {
+            "parameters": {
+                "chatId": "={{$json.chatId}}",
+                "text": "⏳ Descargando tu video de YouTube...\\n\\nEsto puede tardar 30-60 segundos. ⏱️",
+                "additionalFields": {
+                    "reply_to_message_id": "={{$json.messageId}}"
+                }
+            },
+            "id": "send-processing",
+            "name": "Send Processing",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.1,
+            "position": [
+                900,
+                420
+            ]
+        },
+        {
+            "parameters": {
+                "method": "GET",
+                "url": "=https://n8n-youtube-downloader-1.onrender.com/download",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "url",
+                            "value": "={{$json.youtubeUrl}}"
+                        },
+                        {
+                            "name": "format",
+                            "value": "={{$json.formato}}"
+                        },
+                        {
+                            "name": "quality",
+                            "value": "medium"
+                        }
+                    ]
+                },
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "file"
+                        }
+                    },
+                    "timeout": 120000
+                }
+            },
+            "id": "http-download",
+            "name": "Download from API",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                1120,
+                420
+            ]
+        },
+        {
+            "parameters": {
+                "resource": "message",
+                "operation": "sendDocument",
+                "chatId": "={{$json.chatId}}",
+                "binaryData": true,
+                "binaryPropertyName": "data",
+                "additionalFields": {
+                    "caption": "=✅ Descarga completada\\n\\n📁 Formato: {{$json.formato}}\\n🎬 Powered by pytube API",
+                    "reply_to_message_id": "={{$json.messageId}}"
+                }
+            },
+            "id": "send-document",
+            "name": "Send Document",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.1,
+            "position": [
+                1340,
+                420
+            ]
+        }
+    ],
+    "connections": {
+        "Telegram Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Validate URL",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Validate URL": {
+            "main": [
+                [
+                    {
+                        "node": "Should Stop?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Should Stop?": {
+            "main": [
+                [
+                    {
+                        "node": "Send Error",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Send Processing",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Send Processing": {
+            "main": [
+                [
+                    {
+                        "node": "Download from API",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Download from API": {
+            "main": [
+                [
+                    {
+                        "node": "Send Document",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "pinData": {},
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [],
+    "triggerCount": 1,
+    "updatedAt": "2025-12-09T15:49:00.000Z",
+    "versionId": "youtube-downloader-api-v1"
+}

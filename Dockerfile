@@ -1,11 +1,17 @@
-# YouTube Downloader API con pytube
+# YouTube Downloader API con yt-dlp
 FROM python:3.11-slim
 
-# Instalar dependencias del sistema
+# Instalar dependencias del sistema y yt-dlp
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    gcc \
+    curl \
+    ffmpeg \
+    && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
+    && chmod a+rx /usr/local/bin/yt-dlp \
     && rm -rf /var/lib/apt/lists/*
+
+# Verificar instalación
+RUN yt-dlp --version
 
 # Crear directorio de trabajo
 WORKDIR /app
