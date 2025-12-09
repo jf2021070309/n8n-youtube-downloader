@@ -1,14 +1,22 @@
 FROM n8nio/n8n:latest
 
-# Cambiar a usuario root para instalar paquetes
+# Cambiar a usuario root
 USER root
 
-# Instalar Python, pip, ffmpeg y yt-dlp
-RUN apk add --no-cache \
+# Actualizar apk e instalar dependencias
+RUN apk update && \
+    apk add --no-cache \
     python3 \
     py3-pip \
-    ffmpeg && \
-    pip3 install --no-cache-dir --break-system-packages --upgrade yt-dlp
+    ffmpeg \
+    curl
+
+# Instalar yt-dlp usando el método recomendado
+RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && \
+    chmod a+rx /usr/local/bin/yt-dlp
+
+# Verificar que yt-dlp esté instalado
+RUN yt-dlp --version
 
 # Volver al usuario node
 USER node
