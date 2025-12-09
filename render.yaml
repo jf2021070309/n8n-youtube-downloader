@@ -1,13 +1,9 @@
 services:
   - type: web
-    name: n8n-youtube-downloader
+    name: youtube-api
     env: docker
     plan: free
     dockerfilePath: ./Dockerfile
     envVars:
-      - key: N8N_HOST
-        value: 0.0.0.0
-      - key: N8N_PORT
-        value: 5678
-      - key: N8N_PROTOCOL
-        value: https
+      - key: PORT
+        value: 5000
