@@ -124,7 +124,7 @@
         },
         {
             "parameters": {
-                "command": "=yt-dlp -f 'bestaudio' -x --audio-format mp3 -o '/tmp/%(title)s.%(ext)s' '{{$json.youtubeUrl}}' && ls -t /tmp/*.mp3 | head -1",
+                "command": "=/usr/local/bin/yt-dlp -f 'bestaudio' -x --audio-format mp3 -o '/tmp/%(title)s.%(ext)s' '{{$json.youtubeUrl}}' && ls -t /tmp/*.mp3 | head -1",
                 "options": {}
             },
             "id": "execute-ytdlp-mp3",
@@ -138,7 +138,7 @@
         },
         {
             "parameters": {
-                "command": "=yt-dlp -f 'best[height<=720]' -o '/tmp/%(title)s.%(ext)s' '{{$json.youtubeUrl}}' && ls -t /tmp/*.mp4 | head -1",
+                "command": "=/usr/local/bin/yt-dlp -f 'best[height<=720]' -o '/tmp/%(title)s.%(ext)s' '{{$json.youtubeUrl}}' && ls -t /tmp/*.mp4 | head -1",
                 "options": {}
             },
             "id": "execute-ytdlp-mp4",
