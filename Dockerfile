@@ -9,8 +9,8 @@ RUN apk add --no-cache \
     py3-pip \
     ffmpeg
 
-# Instalar yt-dlp
-RUN pip3 install --no-cache-dir --upgrade yt-dlp
+# Instalar yt-dlp (con --break-system-packages para Python 3.11+)
+RUN pip3 install --no-cache-dir --break-system-packages --upgrade yt-dlp
 
 # Volver al usuario n8n
 USER node
