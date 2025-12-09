@@ -1,7 +1,8 @@
-# YouTube Downloader n8n - Build v2.0
-# Forzar rebuild: 2025-12-09-02:00
+# YouTube Downloader n8n - Build v3.0
+# Force complete rebuild - no cache
+# Build date: 2025-12-09T02:06:00
 
-FROM n8nio/n8n:latest
+FROM n8nio/n8n:1.123.4
 
 # Cambiar a usuario root
 USER root
